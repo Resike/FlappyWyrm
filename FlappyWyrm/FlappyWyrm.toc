@@ -1,0 +1,10 @@
+﻿## Interface: 50400
+## Title: Flappy Wyrm
+## Version: 1.0.0
+## Author: Resike
+## Notes: Flappy Wyrm!
+## DefaultState: Enabled
+## SavedVariables: 
+## SavedVariablesPerCharacter: 
+
+FlappyWyrm.lua
