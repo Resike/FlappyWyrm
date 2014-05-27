@@ -16,7 +16,7 @@ local WindowScale = 1
 
 local ScaleLocked = false
 
-local Debug = false
+local Debug = true
 
 local Backdrop = {
 	bgFile = "Interface\\Buttons\\White8x8.blp",
@@ -65,6 +65,7 @@ function FlappyWyrm:InitModelSky()
 	sky:SetPoint("TopLeft", skyframe, "TopLeft", 0, 0)
 end
 
+-- Frame
 Player.frame = CreateFrame("Frame", nil, mainframe)
 Player.frame:SetFrameStrata("High")
 Player.frame:SetPoint("Center", mainframe, "Center", 0, 0)
@@ -75,18 +76,20 @@ if Debug then
 	--Player.frame:SetBackdrop(Backdrop)
 	--Player.frame:SetBackdropColor(0.8, 0.2, 0.2, 0.5)
 end
+-- Model
 Player.model = CreateFrame("PlayerModel", nil, Player.frame)
 Player.model:SetAllPoints(Player.frame)
+-- Hitbox
 Player.hitbox = CreateFrame("Frame", nil, mainframe)
 Player.hitbox:SetFrameStrata("High")
 Player.hitbox:SetPoint("Center", Player.model, "Center", 0, 5)
 Player.hitbox:SetAlpha(1)
 Player.hitbox:SetWidth(100)
 Player.hitbox:SetHeight(105)
---if Debug then
+if Debug then
 	Player.hitbox:SetBackdrop(Backdrop)
 	Player.hitbox:SetBackdropColor(0.2, 0.8, 0.2, 0.5)
---end
+end
 
 function FlappyWyrm:InitModelPlayer(model)
 	model:SetDisplayInfo(25750)
@@ -113,10 +116,31 @@ mainframe:SetScript("OnEvent", function(self, event, ...)
 		local _, battleTag = BNGetInfo()
 		if battleTag == "Resike#2247" then
 			Debug = true
-			--print("FlappyWyrm debugging: Enabled")
+			--print("Flappy Wyrm debugging: Enabled")
 		end
 		mainframe:UnregisterEvent("BN_SELF_ONLINE")
 	end
+end)
+
+mainframe:SetScript("OnEnter", function(self)
+	mainframe:SetScript("OnKeyUp", function(self, key)
+		if key ~= "UP" then
+			return
+		end
+		FlappyWyrm:ChangeAnimation(Player.model, 250)
+	end)
+	mainframe:SetScript("OnKeyDown", function(self, key)
+		if key ~= "ENTER" then
+			return
+		end
+		mainframe:SetScript("OnKeyUp", nil)
+		mainframe:SetScript("OnKeyDown", nil)
+	end)
+end)
+
+mainframe:SetScript("OnLeave", function(self)
+	mainframe:SetScript("OnKeyUp", nil)
+	mainframe:SetScript("OnKeyDown", nil)
 end)
 
 UIParent:HookScript("OnSizeChanged", function(self, width, height)
@@ -144,7 +168,7 @@ end
 
 function FlappyWyrm:ChangeAnimation(model, anim)
 	if anim and anim > - 1 and anim < 802 then
-		local elapsed = 0
+		local elapsed = 600
 		model:SetScript("OnUpdate", function(model, elaps)
 			elapsed = elapsed + (elaps * 1000)
 			model:SetSequenceTime(anim, elapsed)
@@ -218,7 +242,7 @@ function FlappyWyrm:SetOrientation(model, target)
 		end
 	else
 		if Debug then
-			print("Model has no custom camera!")
+			--print("Model has no custom camera!")
 		end
 	end
 end
