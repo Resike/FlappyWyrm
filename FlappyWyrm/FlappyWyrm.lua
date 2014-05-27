@@ -30,8 +30,13 @@ local Backdrop = {
 	}]]
 }
 
+local Player = {
+	frame, model, hitbox, distance = 24.6763, yaw = 1.6912, pitch = -0.3932
+}
+
 local mainframe = CreateFrame("Frame", nil, UIParent)
 mainframe:RegisterEvent("ADDON_LOADED")
+mainframe:RegisterEvent("BN_SELF_ONLINE")
 mainframe:SetFrameStrata("High")
 mainframe:SetPoint("Center", 0, 0)
 mainframe:SetWidth(900)
@@ -51,14 +56,51 @@ local sky = CreateFrame("PlayerModel", nil, skyframe)
 
 function FlappyWyrm:InitModelSky()
 	--sky:SetModel("Environments\\Stars\\Maelstrom_Sky03_Stormbreak.m2")
-	sky:SetModel("Environments\\Stars\\Lostislegloomyskybox.m2")
+	--sky:SetModel("Environments\\Stars\\Lostislegloomyskybox.m2")
+	sky:SetModel("Environments\\Stars\\TwilightsHammerSky.m2")
+	sky:SetPosition(12, - 22.5, 0)
 	sky:SetWidth(899)
 	sky:SetHeight(699)
 	sky:SetAlpha(1)
 	sky:SetPoint("TopLeft", skyframe, "TopLeft", 0, 0)
 end
 
---Version:4.25.3; mcd:8.6763; mcy:1.6912; x:102; modelpath:25750; texture:491; mcp:-0.3932; model:true; y:56
+Player.frame = CreateFrame("Frame", nil, mainframe)
+Player.frame:SetFrameStrata("High")
+Player.frame:SetPoint("Center", mainframe, "Center", 0, 0)
+Player.frame:SetAlpha(1)
+Player.frame:SetWidth(700)
+Player.frame:SetHeight(700)
+if Debug then
+	--Player.frame:SetBackdrop(Backdrop)
+	--Player.frame:SetBackdropColor(0.8, 0.2, 0.2, 0.5)
+end
+Player.model = CreateFrame("PlayerModel", nil, Player.frame)
+Player.model:SetAllPoints(Player.frame)
+Player.hitbox = CreateFrame("Frame", nil, mainframe)
+Player.hitbox:SetFrameStrata("High")
+Player.hitbox:SetPoint("Center", Player.model, "Center", 0, 5)
+Player.hitbox:SetAlpha(1)
+Player.hitbox:SetWidth(100)
+Player.hitbox:SetHeight(105)
+--if Debug then
+	Player.hitbox:SetBackdrop(Backdrop)
+	Player.hitbox:SetBackdropColor(0.2, 0.8, 0.2, 0.5)
+--end
+
+function FlappyWyrm:InitModelPlayer(model)
+	model:SetDisplayInfo(25750)
+	model:SetWidth(700)
+	model:SetHeight(700)
+	model:SetAlpha(1)
+	model:SetCustomCamera(1)
+	model.distance = Player.distance * UIParentScale * WindowScale
+	model.yaw = Player.yaw
+	model.pitch = Player.pitch
+	model:SetPosition(0, 0, -1.5)
+	self:SetOrientation(model)
+	--self:ChangeAnimation(model, 250)
+end
 
 mainframe:SetScript("OnEvent", function(self, event, ...)
 	if event == "ADDON_LOADED" then
@@ -67,6 +109,13 @@ mainframe:SetScript("OnEvent", function(self, event, ...)
 			FlappyWyrm:AddonLoaded()
 			mainframe:UnregisterEvent("ADDON_LOADED")
 		end
+	elseif event == "BN_SELF_ONLINE" then
+		local _, battleTag = BNGetInfo()
+		if battleTag == "Resike#2247" then
+			Debug = true
+			--print("FlappyWyrm debugging: Enabled")
+		end
+		mainframe:UnregisterEvent("BN_SELF_ONLINE")
 	end
 end)
 
@@ -75,11 +124,6 @@ UIParent:HookScript("OnSizeChanged", function(self, width, height)
 end)
 
 function FlappyWyrm:AddonLoaded()
-	local _, battleTag = BNGetInfo()
-	if battleTag == "Resike#2247" then
-		Debug = true
-		print("FlappyWyrm debugging: Enabled")
-	end
 	SlashCmdList["FlappyWyrm"] = function(msg)
 		self:SlashCommands(msg)
 	end
@@ -98,13 +142,24 @@ function FlappyWyrm:AddonLoaded()
 	self:ResizeFrame(mainframe)
 end
 
+function FlappyWyrm:ChangeAnimation(model, anim)
+	if anim and anim > - 1 and anim < 802 then
+		local elapsed = 0
+		model:SetScript("OnUpdate", function(model, elaps)
+			elapsed = elapsed + (elaps * 1000)
+			model:SetSequenceTime(anim, elapsed)
+		end)
+	end
+end
+
 function FlappyWyrm:SlashCommands(msg)
 	if msg == "" then
 		if mainframe:IsVisible() then
 			mainframe:Hide()
 		else
-			self:InitModelSky()
 			mainframe:Show()
+			self:InitModelSky()
+			self:InitModelPlayer(Player.model)
 		end
 	elseif msg == "ui" then
 		print(UIParent:GetScale(), UIParentScale, WindowScale)
@@ -119,6 +174,53 @@ end
 
 function FlappyWyrm:FrameStopMoving(frame, button)
 	frame:StopMovingOrSizing()
+end
+
+function FlappyWyrm:GetDistance(obj1, obj2)
+	return obj2:GetLeft() - (obj1:GetLeft() + obj1:GetWidth())
+end
+
+function FlappyWyrm:GetBaseCameraTarget(model)
+	if model:GetObjectType() ~= "PlayerModel" then
+		if Debug then
+			print("Not \"PlayerModel\" type!")
+		end
+		return
+	end
+	local modelfile = model:GetModel()
+	if modelfile and modelfile ~= "" then
+		local tempmodel = CreateFrame("PlayerModel", nil, UIParent)
+		tempmodel:SetModel(modelfile)
+		tempmodel:SetCustomCamera(1)
+		local x, y, z = tempmodel:GetCameraTarget()
+		tempmodel:ClearModel()
+		return x, y, z
+	end
+end
+
+function FlappyWyrm:SetOrientation(model, target)
+	if model:GetObjectType() ~= "PlayerModel" then
+		if Debug then
+			print("Not \"PlayerModel\" type!")
+		end
+		return
+	end
+	if model:HasCustomCamera() and model.distance and model.yaw and model.pitch then
+		local x = model.distance * math.cos(model.yaw) * math.cos(model.pitch)
+		local y = model.distance * math.sin(- model.yaw) * math.cos(model.pitch)
+		local z = (model.distance * math.sin(- model.pitch))
+		model:SetCameraPosition(x, y, z)
+		if not target then
+			local x, y, z = self:GetBaseCameraTarget(model)
+			if x and y and z then
+				model:SetCameraTarget(0, 0, 0)
+			end
+		end
+	else
+		if Debug then
+			print("Model has no custom camera!")
+		end
+	end
 end
 
 function FlappyWyrm:ResizeFrame(frame)
@@ -245,6 +347,10 @@ function FlappyWyrm:ResizeFrame(frame)
 				child:SetScale(s)
 			end
 		end
+		if Player.model and Player.model.distance then
+			Player.model.distance = Player.distance * UIParentScale * s
+		end
+		FlappyWyrm:SetOrientation(Player.model, true)
 		self:SetHeight(Height * s)
 	end)
 end
