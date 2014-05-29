@@ -18,6 +18,9 @@ local ScaleLocked = false
 
 local Debug = true
 
+local GameStarted = false
+local Flying = false
+
 local Backdrop = {
 	bgFile = "Interface\\Buttons\\White8x8.blp",
 	--[[edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Gold-Border",
@@ -65,10 +68,21 @@ function FlappyWyrm:InitModelSky()
 	sky:SetPoint("TopLeft", skyframe, "TopLeft", 0, 0)
 end
 
+-- Hitbox
+Player.hitbox = CreateFrame("Frame", nil, mainframe)
+Player.hitbox:SetFrameStrata("High")
+Player.hitbox:SetPoint("Center", mainframe, "Center", 0, 5)
+Player.hitbox:SetAlpha(1)
+Player.hitbox:SetWidth(100)
+Player.hitbox:SetHeight(105)
+if Debug then
+	Player.hitbox:SetBackdrop(Backdrop)
+	Player.hitbox:SetBackdropColor(0.2, 0.8, 0.2, 0.5)
+end
 -- Frame
-Player.frame = CreateFrame("Frame", nil, mainframe)
+Player.frame = CreateFrame("Frame", nil, Player.hitbox)
 Player.frame:SetFrameStrata("High")
-Player.frame:SetPoint("Center", mainframe, "Center", 0, 0)
+Player.frame:SetPoint("Center", Player.hitbox, "Center", 0, 0)
 Player.frame:SetAlpha(1)
 Player.frame:SetWidth(700)
 Player.frame:SetHeight(700)
@@ -79,17 +93,6 @@ end
 -- Model
 Player.model = CreateFrame("PlayerModel", nil, Player.frame)
 Player.model:SetAllPoints(Player.frame)
--- Hitbox
-Player.hitbox = CreateFrame("Frame", nil, mainframe)
-Player.hitbox:SetFrameStrata("High")
-Player.hitbox:SetPoint("Center", Player.model, "Center", 0, 5)
-Player.hitbox:SetAlpha(1)
-Player.hitbox:SetWidth(100)
-Player.hitbox:SetHeight(105)
-if Debug then
-	Player.hitbox:SetBackdrop(Backdrop)
-	Player.hitbox:SetBackdropColor(0.2, 0.8, 0.2, 0.5)
-end
 
 function FlappyWyrm:InitModelPlayer(model)
 	model:SetDisplayInfo(25750)
@@ -124,10 +127,14 @@ end)
 
 mainframe:SetScript("OnEnter", function(self)
 	mainframe:SetScript("OnKeyUp", function(self, key)
-		if key ~= "UP" then
+		if key ~= "UP" and key ~= "SPACE" then
 			return
 		end
+		GameStarted = true
+		Flying = true
 		FlappyWyrm:ChangeAnimation(Player.model, 250)
+		local r = tostring(math.random(1, 4))
+		PlaySoundFile("Sound\\Creature\\WingFlaps\\GiantWingFlap"..r..".ogg", "Master")
 	end)
 	mainframe:SetScript("OnKeyDown", function(self, key)
 		if key ~= "ENTER" then
@@ -169,11 +176,49 @@ end
 function FlappyWyrm:ChangeAnimation(model, anim)
 	if anim and anim > - 1 and anim < 802 then
 		local elapsed = 600
-		model:SetScript("OnUpdate", function(model, elaps)
-			elapsed = elapsed + (elaps * 1000)
-			model:SetSequenceTime(anim, elapsed)
+		model:SetScript("OnUpdate", function(self, elaps)
+			elapsed = elapsed + (elaps * 700)
+			self:SetSequenceTime(anim, elapsed)
 		end)
 	end
+end
+
+local flytime = 0
+local falltime = 0
+mainframe:SetScript("OnUpdate", function(self, elaps)
+	if GameStarted then
+		local _, _, _, x, y = Player.hitbox:GetPoint()
+		--print(y)
+		if not Flying then
+			if y > -297 then
+				falltime = falltime + (elaps * 1000)
+				Player.hitbox:SetPoint("Center", self, "Center", 0, y - (falltime / 400))
+			elseif y <= -297 then
+				-- Dead
+				--mainframe:SetScript("OnUpdate", nil)
+				Player.hitbox:SetPoint("Center", self, "Center", 0, -297)
+			end
+		else
+			falltime = 0
+			flytime = flytime + (elaps * 1000)
+			if flytime < 500 then
+				if y < 298 then
+					Player.hitbox:SetPoint("Center", self, "Center", 0, y + (150 / flytime))
+				elseif y >= 298 then
+					-- Dead
+					--mainframe:SetScript("OnUpdate", nil)
+					Player.hitbox:SetPoint("Center", self, "Center", 0, 298)
+				end
+			else
+				Flying = false
+				flytime = 0
+			end
+		end
+	end
+end)
+
+function FlappyWyrm:ResetGame()
+	GameStarted = false
 end
 
 function FlappyWyrm:SlashCommands(msg)
@@ -200,7 +245,11 @@ function FlappyWyrm:FrameStopMoving(frame, button)
 	frame:StopMovingOrSizing()
 end
 
-function FlappyWyrm:GetDistance(obj1, obj2)
+function FlappyWyrm:GetDistanceH(obj1, obj2)
+	return obj2:GetBottom() - obj1:GetBottom()
+end
+
+function FlappyWyrm:GetDistanceW(obj1, obj2)
 	return obj2:GetLeft() - (obj1:GetLeft() + obj1:GetWidth())
 end
 
