@@ -4,11 +4,14 @@ local FlappyWyrm = { }
 ns.FlappyWyrm = FlappyWyrm
 
 local ipairs = ipairs
+local math = math
 local print = print
+local tostring = tostring
 
 local BNGetInfo = BNGetInfo
 local CreateFrame = CreateFrame
 local GetCursorPosition = GetCursorPosition
+local PlaySoundFile = PlaySoundFile
 local SlashCmdList = SlashCmdList
 
 local UIParentScale = 1
@@ -16,7 +19,7 @@ local WindowScale = 1
 
 local ScaleLocked = false
 
-local Debug = true
+local Debug = false
 
 local GameStarted = false
 local Flying = false
@@ -243,14 +246,6 @@ end
 
 function FlappyWyrm:FrameStopMoving(frame, button)
 	frame:StopMovingOrSizing()
-end
-
-function FlappyWyrm:GetDistanceH(obj1, obj2)
-	return obj2:GetBottom() - obj1:GetBottom()
-end
-
-function FlappyWyrm:GetDistanceW(obj1, obj2)
-	return obj2:GetLeft() - (obj1:GetLeft() + obj1:GetWidth())
 end
 
 function FlappyWyrm:GetBaseCameraTarget(model)
