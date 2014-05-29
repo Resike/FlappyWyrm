@@ -191,6 +191,8 @@ local falltime = 0
 mainframe:SetScript("OnUpdate", function(self, elaps)
 	if GameStarted then
 		local _, _, _, x, y = Player.hitbox:GetPoint()
+		Player.model.pitch = Player.pitch + (y / 800)
+		FlappyWyrm:SetOrientation(Player.model)
 		--print(y)
 		if not Flying then
 			if y > -297 then
