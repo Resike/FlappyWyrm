@@ -22,7 +22,9 @@ local ScaleLocked = false
 local Debug = false
 
 local GameStarted = false
+
 local Flying = false
+local TimeSlow = false
 
 local Backdrop = {
 	bgFile = "Interface\\Buttons\\White8x8.blp",
@@ -37,7 +39,7 @@ local Backdrop = {
 }
 
 local Player = {
-	frame, model, hitbox, distance = 24.6763, yaw = 1.6912, pitch = -0.3932
+	frame, model, hitbox, polynom, distance = 24.6763, yaw = 1.6912, pitch = -0.3932
 }
 
 local mainframe = CreateFrame("Frame", nil, UIParent)
@@ -97,6 +99,13 @@ end
 Player.model = CreateFrame("PlayerModel", nil, Player.frame)
 Player.model:SetAllPoints(Player.frame)
 
+Player.poynom = CreateFrame("Frame", nil, Player.hitbox)
+Player.poynom:SetFrameStrata("Dialog")
+Player.poynom:SetPoint("Center", Player.hitbox, "Center", 0, 0)
+Player.poynom:SetAlpha(1)
+Player.poynom:SetWidth(700)
+Player.poynom:SetHeight(700)
+
 function FlappyWyrm:InitModelPlayer(model)
 	model:SetDisplayInfo(25750)
 	model:SetWidth(700)
@@ -110,6 +119,33 @@ function FlappyWyrm:InitModelPlayer(model)
 	self:SetOrientation(model)
 	--self:ChangeAnimation(model, 250)
 end
+
+local triangle = {
+	[1] = {x = 0, y = 0},
+	[2] = {x = 1, y = 0},
+	[3] = {x = 0, y = 1}
+}
+
+local square = {
+	[1] = {x = 0, y = 0},
+	[2] = {x = -2, y = 0},
+	[3] = {x = -1, y = 1},
+	[4] = {x = -2, y = 1}
+}
+
+local coords = {
+	[1] = {x = 308, y = 314},
+	[2] = {x = 322, y = 360},
+	[3] = {x = 352, y = 374},
+	[4] = {x = 355, y = 407},
+	[5] = {x = 396, y = 383},
+	[6] = {x = 393, y = 367},
+	[7] = {x = 371, y = 359},
+	[8] = {x = 351, y = 332},
+	[9] = {x = 345, y = 303},
+	[10] = {x = 328, y = 323},
+	[11] = {x = 304, y = 290}
+}
 
 mainframe:SetScript("OnEvent", function(self, event, ...)
 	if event == "ADDON_LOADED" then
@@ -130,17 +166,34 @@ end)
 
 mainframe:SetScript("OnEnter", function(self)
 	mainframe:SetScript("OnKeyUp", function(self, key)
-		if key ~= "UP" and key ~= "SPACE" then
+		if key ~= "UP" and key ~= "SPACE" and key ~= "1" and key ~= "2" and key ~= "3" and key ~= "4" and key ~= "5" then
 			return
 		end
 		GameStarted = true
-		Flying = true
-		FlappyWyrm:ChangeAnimation(Player.model, 250)
-		local r = tostring(math.random(1, 4))
-		PlaySoundFile("Sound\\Creature\\WingFlaps\\GiantWingFlap"..r..".ogg", "Master")
+		if key == "UP" or key == "SPACE" then
+			Flying = true
+			FlappyWyrm:ChangeAnimation(Player.model, 250, 600, 700)
+			local r = tostring(math.random(1, 4))
+			PlaySoundFile("Sound\\Creature\\WingFlaps\\GiantWingFlap"..r..".ogg", "Master")
+		elseif key == "1" then
+			-- Critical
+			FlappyWyrm:ChangeAnimation(Player.model, 10)
+		elseif key == "2" then
+			-- Attack
+			FlappyWyrm:ChangeAnimation(Player.model, 16)
+		elseif key == "3" then
+			-- Wound
+			FlappyWyrm:ChangeAnimation(Player.model, 9)
+		elseif key == "4" then
+			-- Cast
+			FlappyWyrm:ChangeAnimation(Player.model, 32)
+		elseif key == "5" then
+			-- Death
+			FlappyWyrm:ChangeAnimation(Player.model, 1)
+		end
 	end)
 	mainframe:SetScript("OnKeyDown", function(self, key)
-		if key ~= "ENTER" then
+		if key ~= "ENTER" and key ~= "ESCAPE" then
 			return
 		end
 		mainframe:SetScript("OnKeyUp", nil)
@@ -154,7 +207,7 @@ mainframe:SetScript("OnLeave", function(self)
 end)
 
 UIParent:HookScript("OnSizeChanged", function(self, width, height)
-	UIParentScale = UIParent:GetScale()
+	UIParentScale = self:GetScale()
 end)
 
 function FlappyWyrm:AddonLoaded()
@@ -176,15 +229,28 @@ function FlappyWyrm:AddonLoaded()
 	self:ResizeFrame(mainframe)
 end
 
-function FlappyWyrm:ChangeAnimation(model, anim)
+function FlappyWyrm:ChangeAnimation(model, anim, start, speed)
 	if anim and anim > - 1 and anim < 802 then
-		local elapsed = 600
+		if not start then
+			start = 0
+		end
+		if not speed then
+			speed = 1000
+		end
 		model:SetScript("OnUpdate", function(self, elaps)
-			elapsed = elapsed + (elaps * 700)
-			self:SetSequenceTime(anim, elapsed)
+			start = start + (elaps * speed)
+			self:SetSequenceTime(anim, start)
 		end)
 	end
 end
+
+local onupdate = mainframe:CreateAnimationGroup()
+onupdate.anim = onupdate:CreateAnimation()
+onupdate.anim:SetDuration(0.01)
+onupdate:SetLooping("REPEAT")
+onupdate:SetScript("OnLoop", function(self)
+	--
+end)
 
 local flytime = 0
 local falltime = 0
@@ -208,7 +274,7 @@ mainframe:SetScript("OnUpdate", function(self, elaps)
 			flytime = flytime + (elaps * 1000)
 			if flytime < 500 then
 				if y < 298 then
-					Player.hitbox:SetPoint("Center", self, "Center", 0, y + (150 / flytime))
+					Player.hitbox:SetPoint("Center", self, "Center", 0, y + (135 / flytime))
 				elseif y >= 298 then
 					-- Dead
 					--mainframe:SetScript("OnUpdate", nil)
@@ -219,6 +285,7 @@ mainframe:SetScript("OnUpdate", function(self, elaps)
 				flytime = 0
 			end
 		end
+		--onupdate:Play()
 	end
 end)
 
@@ -235,6 +302,11 @@ function FlappyWyrm:SlashCommands(msg)
 			self:InitModelSky()
 			self:InitModelPlayer(Player.model)
 		end
+	elseif msg == "pos" then
+		print(FlappyWyrm:GetCoords(Player.poynom))
+	elseif msg == "cur" then
+		local x, y = GetCursorPosition()
+		print(x / UIParentScale, y / UIParentScale)
 	elseif msg == "ui" then
 		print(UIParent:GetScale(), UIParentScale, WindowScale)
 	end
@@ -291,6 +363,113 @@ function FlappyWyrm:SetOrientation(model, target)
 			--print("Model has no custom camera!")
 		end
 	end
+end
+
+function FlappyWyrm:PointInPolynom(p, x, y)
+	local c = false
+	for i = 1, #p do
+		local j = i + 1
+		if j > #p then
+			j = 1
+		end
+		if ((p[i].y > y) ~= (p[j].y > y)) and (x < (p[j].x - p[i].x) * (y - p[i].y) / (p[j].y - p[i].y) + p[i].x) then
+			c = not c
+		end
+	end
+	return c
+end
+
+function FlappyWyrm:PolynomInPolynom(p1, p2)
+	local c = { }
+	for i = 1, #p2 do
+		c[i] = false
+		for j = 1, #p1 do
+			local k = j + 1
+			if k > #p1 then
+				k = 1
+			end
+			if ((p1[j].y > p2[i].y) ~= (p1[k].y > p2[i].y)) and (p2[i].x < (p1[k].x - p1[j].x) * (p2[i].y - p1[j].y) / (p1[k].y - p1[j].y) + p1[j].x) then
+				c[i] = not c[i]
+			end
+		end
+		if c[i] then
+			return true
+		end
+	end
+	return false
+end
+
+--print(FlappyWyrm:PointInPolynom(triangle, 0.5, 0.49))
+
+--print(FlappyWyrm:PolynomInPolynom(triangle, square))
+
+print(FlappyWyrm:PolynomInPolynom(coords, square))
+
+local PreCalc = 
+	{
+		["sin"] = { },
+		["cos"] = { }
+	}
+do
+	for x = -720, 720 do
+		PreCalc.sin[x] = sin(x)
+		PreCalc.cos[x] = cos(x)
+	end
+end
+
+function FlappyWyrm:DrawLine(sx, sy, ex, ey, lineW, lineAlpha, r, g, b, parent) 
+	if not sx or not sy or not ex or not ey then
+		return
+	end
+	if sx == ex and sy == ey then 
+		return 
+	end
+	local dx, dy = ex - sx, ey - sy
+	local w, h = abs(dx), abs(dy)
+	local d
+	if w > h then 
+		d = w
+	else 
+		d = h 
+	end
+	local tx = (sx + ex - d) / 2.0
+	local ty = (sy + ey - d) / 2.0
+	local a = atan2(dy, dx)
+	local s = lineW * 16 / d	
+	local ca = PreCalc.cos[floor(a)] / s 
+	local sa = PreCalc.sin[floor(a)] / s
+	local lineframe = parent:CreateTexture(nil, "OVERLAY")
+	if lineframe:GetTexture() ~= "Interface\\AddOns\\FlappyWyrm\\Textures\\Line.tga" then
+		lineframe:SetTexture("Interface\\AddOns\\FlappyWyrm\\Textures\\Line.tga")
+	end
+	lineframe:ClearAllPoints()
+	lineframe:SetPoint("BOTTOMLEFT", parent ,"BOTTOMLEFT", tx, ty)
+	lineframe:SetPoint("TOPRIGHT", parent, "BOTTOMLEFT", tx + d, ty + d)
+	local C1, C2 = (1 + sa - ca) / 2.0, (1 - sa - ca) / 2.0
+	lineframe:SetTexCoord(C1, C2, -sa + C1, ca + C2, ca + C1, sa + C2, ca - sa + C1, ca + sa + C2)
+	lineframe:SetVertexColor(r, g, b, lineAlpha)
+	lineframe:Show()
+	return lineframe
+end
+
+FlappyWyrm:DrawLine(308, 314, 322, 360, 1, 1, 1, 0, 0, Player.poynom)
+FlappyWyrm:DrawLine(322, 360, 352, 374, 1, 1, 1, 0, 0, Player.poynom)
+FlappyWyrm:DrawLine(352, 374, 355, 407, 1, 1, 1, 0, 0, Player.poynom)
+FlappyWyrm:DrawLine(355, 407, 396, 383, 1, 1, 1, 0, 0, Player.poynom)
+FlappyWyrm:DrawLine(396, 383, 393, 367, 1, 1, 1, 0, 0, Player.poynom)
+FlappyWyrm:DrawLine(393, 367, 371, 359, 1, 1, 1, 0, 0, Player.poynom)
+FlappyWyrm:DrawLine(371, 359, 351, 332, 1, 1, 1, 0, 0, Player.poynom)
+FlappyWyrm:DrawLine(351, 332, 345, 303, 1, 1, 1, 0, 0, Player.poynom)
+FlappyWyrm:DrawLine(345, 303, 328, 323, 1, 1, 1, 0, 0, Player.poynom)
+FlappyWyrm:DrawLine(328, 323, 304, 290, 1, 1, 1, 0, 0, Player.poynom)
+FlappyWyrm:DrawLine(304, 290, 308, 314, 1, 1, 1, 0, 0, Player.poynom)
+
+function FlappyWyrm:GetCoords(frame)
+	local x, y = GetCursorPosition()
+	x = x / UIParentScale
+	y = y / UIParentScale
+	local fx, fy = frame:GetLeft(), frame:GetBottom()
+	return x - fx, y - fy
 end
 
 function FlappyWyrm:ResizeFrame(frame)
