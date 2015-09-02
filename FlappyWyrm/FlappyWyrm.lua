@@ -19,7 +19,7 @@ local WindowScale = 1
 
 local ScaleLocked = false
 
-local Debug = false
+local Debug = true
 
 local GameStarted = false
 
@@ -403,7 +403,7 @@ end
 
 --print(FlappyWyrm:PolynomInPolynom(triangle, square))
 
-print(FlappyWyrm:PolynomInPolynom(coords, square))
+--print(FlappyWyrm:PolynomInPolynom(coords, square))
 
 local PreCalc = 
 	{
